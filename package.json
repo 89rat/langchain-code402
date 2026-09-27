@@ -1,0 +1,47 @@
+{
+  "name": "@code-402/langchain",
+  "version": "0.1.0",
+  "description": "code402 x402 pay-per-call tools as LangChain DynamicStructuredTools — IBAN/LEI/VAT/GSTIN/IFSC/SWIFT/sanctions verification, non-custodial USDC-on-Base payments with a hard client-side spend cap.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "keywords": ["x402", "langchain", "agents", "tools", "usdc", "base", "eip-3009", "micropayments", "code402"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/89rat/langchain-code402.git"
+  },
+  "homepage": "https://hcrb.in",
+  "dependencies": {
+    "@code-402/agent-tools": "^0.2.1",
+    "json-schema-to-zod": "^2.6.1"
+  },
+  "peerDependencies": {
+    "@langchain/core": ">=0.3.0",
+    "zod": ">=3.22.0"
+  },
+  "devDependencies": {
+    "@langchain/core": "^0.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "zod": "^3.22.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
