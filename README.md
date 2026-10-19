@@ -1,12 +1,44 @@
 # @code-402/langchain
 
-code402's x402 pay-per-call verification tools as LangChain `DynamicStructuredTool`s —
-IBAN, LEI, VAT, GSTIN, IFSC, SWIFT/BIC, sanctions screening, and onboarding packs.
+code402's x402 pay-per-call verification tools and revenue modules as LangChain `DynamicStructuredTool`s —
+IBAN, LEI, VAT, GSTIN, IFSC, SWIFT/BIC, sanctions screening, onboarding packs, plus the 7 revenue modules (`catalog: "modules"`).
 Non-custodial: your agent's wallet signs an EIP-3009 transfer directly to the seller
 named in the 402 challenge (USDC on Base). The live 402 challenge is the only price
 ever signed; a hard client-side spend cap is enforced before any signature.
 
-## Quickstart
+## Quickstart: no wallet, no payment
+
+Install the published package and its LangChain peer dependency:
+
+```sh
+npm install @code-402/langchain@0.1.2 @langchain/core@0.3.80
+```
+
+Start without a signer. This example can use the current free allowance (5 calls/day per client on eligible tools); if it
+receives HTTP 402, it stops without authorizing a payment.
+
+```ts
+import { getCode402Tools } from "@code-402/langchain";
+
+const tools = await getCode402Tools({
+  baseUrl: "https://hcrb.in",
+  maxAmountMinor: "0", // never pay
+});
+
+const iban = tools.find((t) => t.name === "code402_iban_check");
+if (!iban) throw new Error("Expected IBAN tool is absent from the current catalog");
+console.log(await iban.invoke({ iban: "GB82WEST12345698765432" }));
+```
+
+The current allowance applies only to eligible identifier checks, not every tool.
+Read the [live manifest](https://hcrb.in/.well-known/mcp.json) before use. A 200
+response is not by itself a valid identifier or independently confirmed settlement.
+
+## Explicitly authorize paid Base calls
+
+The following is a separate, optional paid configuration. Install `viem`, use a
+dedicated low-balance wallet, and review the seller and payment requirements first.
+Do not put the private key in source, logs, a browser, or an agent prompt.
 
 ```ts
 import { privateKeyToAccount } from "viem/accounts";
@@ -16,6 +48,7 @@ const tools = await getCode402Tools({
   baseUrl: "https://hcrb.in",
   account: privateKeyToAccount(process.env.PAYER_PRIVATE_KEY as `0x${string}`),
   maxAmountMinor: "5000", // hard cap: 0.005 USDC per call
+  allowMainnet: true, // explicit opt-in to payments on Base (chain 8453)
 });
 
 const iban = tools.find((t) => t.name === "code402_iban_check")!;
@@ -25,11 +58,42 @@ console.log(await iban.invoke({ iban: "GB82WEST12345698765432" }));
 The tool list is read live from the seller's `/.well-known/mcp.json` — nothing is
 hardcoded. A free `code402_check_price` tool (x402 price index lookup) is included.
 
+## Catalogs: core, modules, experimental
+
+The default card (`catalog: "core"`) is the 24-tool public catalog. The seven paid revenue-module tools (`commerce/accelerate-payout`, `oracle/vendor-risk-score`, `fx/best-execution-quote`, `quota/mint-x402`, `multimodal/verify-artifact`, `compliance/einvoice-transform`, `dip1/adjudicate-dispute`) live on the modules card:
+
+```ts
+const moduleTools = await getCode402Tools({
+  baseUrl: "https://hcrb.in",
+  account: privateKeyToAccount(process.env.PAYER_PRIVATE_KEY as `0x${string}`),
+  maxAmountMinor: "10000", // 0.01 USDC per-call cap
+  allowMainnet: true,
+  catalog: "modules",
+});
+```
+
+Every module call is its own independent per-call settle at the live 402 quote. Micro-priced evaluation shelves agents typically sample first: registry checks (IBAN/LEI/VAT/OFAC) for the compliance modules, balance/settlement-history checks for `accelerate-payout`, and FX spot/savings for `best-execution-quote`.
+
+`catalog: "experimental"` reads the advertised full set; listing an experimental tool does not establish production readiness.
+
 ## Spend cap semantics
 
 - `maxAmountMinor` is an integer string in USDC minor units (6 decimals): `"5000"` = 0.005 USDC. Default `"0"` = never pay.
 - The cap is enforced **before** signing, per call. A per-call override can only tighten it, never loosen it.
 - Base mainnet (chain 8453) is refused unless `allowMainnet: true`.
+- This is a per-call cap, **not an aggregate budget across agents or calls**.
+- Version 0.1.2 does not provide a durable recovery journal. After an ambiguous
+  paid-call timeout, do not invoke a fresh paid call blindly: it may sign a new
+  authorization. Preserve the original operation/payment evidence and reconcile
+  with the seller before deciding whether another payment is safe.
+
+## Inspect a workflow before paying
+
+The [evidence workbench](https://hcrb.in/workbench) compares supplied order,
+payment and delivery records. Its fixtures are synthetic; it does not independently
+verify settlement, delivery, AP2 authority, or the truth of supplied records.
+Receipt signatures authenticate recorded data under the signer's trust assumptions;
+receipt verification remains free.
 
 ## Custody
 

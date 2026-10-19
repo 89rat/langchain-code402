@@ -7,9 +7,39 @@ const CATALOG = {
     {
       name: "iban_check",
       description: "IBAN Check & Wire Fraud Shield",
+      // Legacy snake_case key; the camelCase inputSchema path is covered by the
+      // @code-402/agent-tools suite (the adapter reads both).
       input_schema: {
         type: "object",
         properties: { iban: { type: "string", description: "IBAN to validate" } },
+        required: ["iban"],
+      },
+      price_usdc: 0.005,
+    },
+    {
+      name: "vat_mod97_check",
+      description: "VAT mod-97 with an enum",
+      input_schema: {
+        type: "object",
+        properties: { country: { type: "string", enum: ["BE", "NL", "LU"] } },
+        required: ["country"],
+      },
+      price_usdc: 0.005,
+    },
+  ],
+  receipts: { receipt_signing_address: "0x0000000000000000000000000000000000000000" },
+};
+
+const MODULES_CATALOG = {
+  tools: [
+    {
+      name: "accelerate-payout",
+      description: "Commerce payout acceleration quote",
+      call: "POST /v1/commerce/accelerate-payout",
+      inputSchema: {
+        type: "object",
+        properties: { invoice_id: { type: "string" } },
+        required: ["invoice_id"],
       },
       price_usdc: 0.005,
     },
@@ -20,6 +50,9 @@ const CATALOG = {
 function mockFetch() {
   return async (url: string | URL | Request) => {
     const u = String(url);
+    if (u.endsWith("/.well-known/mcp.json?catalog=modules")) {
+      return new Response(JSON.stringify(MODULES_CATALOG), { status: 200, headers: { "content-type": "application/json" } });
+    }
     if (u.endsWith("/.well-known/mcp.json")) {
       return new Response(JSON.stringify(CATALOG), { status: 200, headers: { "content-type": "application/json" } });
     }
@@ -30,8 +63,37 @@ function mockFetch() {
 describe("getCode402Tools", () => {
   test("builds DynamicStructuredTools from the catalog with no network in tests", async () => {
     const tools = await getCode402Tools({ fetch: mockFetch() as never, baseUrl: "https://code402.invalid" });
-    expect(tools.length).toBeGreaterThanOrEqual(2); // catalog tool + free check_price
+    expect(tools.length).toBeGreaterThanOrEqual(3); // two catalog tools + free check_price
     for (const t of tools) expect(t).toBeInstanceOf(DynamicStructuredTool);
+  });
+
+  test("loads the modules catalog card (?catalog=modules) when catalog: 'modules' is set", async () => {
+    const seenUrls: string[] = [];
+    const baseMock = mockFetch();
+    const trackingFetch = async (url: string | URL | Request) => {
+      seenUrls.push(String(url));
+      return baseMock(url);
+    };
+    const tools = await getCode402Tools({
+      fetch: trackingFetch as never,
+      baseUrl: "https://code402.invalid",
+      catalog: "modules",
+    });
+    expect(seenUrls[0]).toBe("https://code402.invalid/.well-known/mcp.json?catalog=modules");
+    expect(tools.some((t) => t.name === "code402_accelerate_payout")).toBe(true);
+  });
+
+  test("propagates the live inputSchema as an executable zod schema", async () => {
+    const tools = await getCode402Tools({ fetch: mockFetch() as never, baseUrl: "https://code402.invalid" });
+    const iban = tools.find((t) => t.name === "code402_iban_check")!;
+    const schema = (iban as unknown as { schema: { parse: (v: unknown) => unknown } }).schema;
+    expect(typeof schema.parse).toBe("function");
+    expect(schema.parse({ iban: "GB82WEST12345698765432" })).toEqual({ iban: "GB82WEST12345698765432" });
+    expect(() => schema.parse({})).toThrow(); // required iban missing
+    const vat = tools.find((t) => t.name === "code402_vat_mod97_check")!;
+    const vatSchema = (vat as unknown as { schema: { parse: (v: unknown) => unknown } }).schema;
+    expect(vatSchema.parse({ country: "BE" })).toEqual({ country: "BE" });
+    expect(() => vatSchema.parse({ country: "DE" })).toThrow(); // enum rejects
   });
 
   test("executes a call through the LangChain tool path", async () => {

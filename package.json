@@ -1,7 +1,7 @@
 {
   "name": "@code-402/langchain",
-  "version": "0.1.0",
-  "description": "code402 x402 pay-per-call tools as LangChain DynamicStructuredTools — IBAN/LEI/VAT/GSTIN/IFSC/SWIFT/sanctions verification, non-custodial USDC-on-Base payments with a hard client-side spend cap.",
+  "version": "0.1.2",
+  "description": "code402 x402 pay-per-call tools as LangChain DynamicStructuredTools — 24 deterministic checks + 7 revenue modules (hcrb.in), non-custodial USDC-on-Base payments with a hard client-side spend cap and offline XDR-1 receipt verification.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,7 +11,11 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -19,7 +23,17 @@
     "test": "vitest run",
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
-  "keywords": ["x402", "langchain", "agents", "tools", "usdc", "base", "eip-3009", "micropayments", "code402"],
+  "keywords": [
+    "x402",
+    "langchain",
+    "agents",
+    "tools",
+    "usdc",
+    "base",
+    "eip-3009",
+    "micropayments",
+    "code402"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -27,12 +41,11 @@
   },
   "homepage": "https://hcrb.in",
   "dependencies": {
-    "@code-402/agent-tools": "^0.2.1",
-    "json-schema-to-zod": "^2.6.1"
+    "@code-402/agent-tools": "^0.2.3",
+    "zod": "^3.22.0"
   },
   "peerDependencies": {
-    "@langchain/core": ">=0.3.0",
-    "zod": ">=3.22.0"
+    "@langchain/core": ">=0.3.0"
   },
   "devDependencies": {
     "@langchain/core": "^0.3.0",
