@@ -14,7 +14,7 @@ Install the published package and its LangChain peer dependency:
 npm install @code-402/langchain@0.1.2 @langchain/core@0.3.80
 ```
 
-Start without a signer. This example can use the current free allowance (5 calls/day per client on eligible tools); if it
+Start without a signer. Published synthetic test fixtures (e.g. `GB82WEST12345698765432`) run free without a wallet; if a live call
 receives HTTP 402, it stops without authorizing a payment.
 
 ```ts
@@ -47,12 +47,12 @@ import { getCode402Tools } from "@code-402/langchain";
 const tools = await getCode402Tools({
   baseUrl: "https://hcrb.in",
   account: privateKeyToAccount(process.env.PAYER_PRIVATE_KEY as `0x${string}`),
-  maxAmountMinor: "5000", // hard cap: 0.005 USDC per call
+  maxAmountMinor: "10000", // hard cap: 0.01 USDC per call
   allowMainnet: true, // explicit opt-in to payments on Base (chain 8453)
 });
 
 const iban = tools.find((t) => t.name === "code402_iban_check")!;
-console.log(await iban.invoke({ iban: "GB82WEST12345698765432" }));
+console.log(await iban.invoke({ iban: "FR1420041010050500013M02606" }));
 ```
 
 The tool list is read live from the seller's `/.well-known/mcp.json` — nothing is
@@ -78,7 +78,7 @@ Every module call is its own independent per-call settle at the live 402 quote. 
 
 ## Spend cap semantics
 
-- `maxAmountMinor` is an integer string in USDC minor units (6 decimals): `"5000"` = 0.005 USDC. Default `"0"` = never pay.
+- `maxAmountMinor` is an integer string in USDC minor units (6 decimals): `"10000"` = 0.01 USDC. Default `"0"` = never pay.
 - The cap is enforced **before** signing, per call. A per-call override can only tighten it, never loosen it.
 - Base mainnet (chain 8453) is refused unless `allowMainnet: true`.
 - This is a per-call cap, **not an aggregate budget across agents or calls**.

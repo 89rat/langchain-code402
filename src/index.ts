@@ -13,7 +13,7 @@ export interface Code402LangChainOptions {
   /** A viem local account (privateKeyToAccount(...)). Omit for free-tier / quote-only use. */
   account?: unknown;
   /**
-   * Hard client-side spend cap in USDC minor units (6 decimals): "5000" = 0.005 USDC.
+   * Hard client-side spend cap in USDC minor units (6 decimals): "10000" = 0.01 USDC.
    * Default "0" = never pay. Enforced before any signature is produced.
    */
   maxAmountMinor?: string;
